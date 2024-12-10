@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main # Trigger on push to the main branch
-#Comment
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -21,15 +21,14 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     # Step 3: Deploy Bicep template
-    - name: Dmoney Bicep Deployment
+    - name: Deploy Bicep file
       run: |
         az deployment group create \
           --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
           --template-file main.bicep \
-          --parameters dmoneyContainerRegistryName=dmoneycontainerregistry \
-                       dmoneyAppServicePlanName=dmoneyAppServicePlan \
-                       dmoneyWebAppName=dmoneyWebApp \
-                       location=westeurope
-          --name main-$(date +%s) 
-
-
+          --parameters \
+            dmoneyContainerRegistryName=dmoneycontainerregistry \
+            dmoneyAppServicePlanName=dmoneyAppServicePlan \
+            dmoneyWebAppName=dmoneyWebApp \
+            location=westeurope \
+          --name main-$(date +%s)
