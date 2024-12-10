@@ -30,3 +30,4 @@ jobs:
                        dmoneyAppServicePlanName=dmoneyAppServicePlan \
                        dmoneyWebAppName=dmoneyWebApp \
                        location=westeurope
+           --name main-$(date +%s)
