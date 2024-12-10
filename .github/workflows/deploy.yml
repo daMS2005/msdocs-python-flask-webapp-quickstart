@@ -21,7 +21,7 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     # Step 3: Deploy Bicep template
-    - name: Deploy Bicep file
+    - name: Dmoney Bicep Deployment
       run: |
         az deployment group create \
           --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV \
@@ -31,3 +31,5 @@ jobs:
                        dmoneyWebAppName=dmoneyWebApp \
                        location=westeurope
           --name main-$(date +%s) 
+
+
