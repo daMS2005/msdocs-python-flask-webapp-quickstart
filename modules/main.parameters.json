@@ -1,0 +1,28 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2020-10-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "enviromentType": {
+        "value": "dev"
+      },
+      "dmoneycontainerRegistryName": {
+        "value": "dmoneycontainerregistry"
+      },
+      "containerRegistryImageName": {
+        "value": "dmoneyimage"
+      },
+      "containerRegistryImageVersion": {
+        "value": "v1"
+      },
+      "appServicePlanName": {
+        "value": "dmoneyAppServicePlan"
+      },
+      "webAppName": {
+        "value": "dmoneyWebApp"
+      },
+      "location": {
+        "value": "westeurope"
+      }
+    }
+  }
+  
