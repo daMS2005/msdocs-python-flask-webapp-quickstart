@@ -1,22 +1,24 @@
-name: Build and Deploy Container App to Azure
+name: Build, Deploy Resources, and Deploy App
 
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch
+      - main  # Trigger on push to the main branch
 
 env:
-  REGISTRY_NAME: dmoneycontainerregistry  # Replace with your ACR name
-  REGISTRY_LOCATION: westeurope           # Replace with your desired location
-  REGISTRY_SKU: Basic                     # Replace with your desired SKU
-  IMAGE_BASE_NAME: dmoneyimage            # Replace with your container image name
+  REGISTRY_NAME: dmoneycontainerregistry
+  REGISTRY_LOCATION: westeurope
+  REGISTRY_SKU: Basic
+  IMAGE_BASE_NAME: dmoneyimage
+  WEB_APP_NAME: dmoneyWebApp
+  RESOURCE_GROUP: BCSAI2024-DEVOPS-STUDENTS-A-DEV
 
 jobs:
-  build-and-deploy:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout code
+    # Step 1: Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
@@ -26,14 +28,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 3: Ensure ACR exists
-    - name: Ensure ACR exists
+    # Step 3: Create or ensure resources exist
+    - name: Deploy infrastructure using Bicep
       run: |
-        if ! az acr show --name ${{ env.REGISTRY_NAME }} &>/dev/null; then
-          az acr create --name ${{ env.REGISTRY_NAME }} --resource-group BCSAI2024-DEVOPS-STUDENTS-A-DEV --sku ${{ env.REGISTRY_SKU }} --location ${{ env.REGISTRY_LOCATION }} --admin-enabled true
-        else
-          echo "ACR ${{ env.REGISTRY_NAME }} already exists."
-        fi
+        az deployment group create \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --template-file main.bicep \
+          --parameters dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
+                       dmoneyAppServicePlanName=dmoneyAppServicePlan \
+                       dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
+                       location=${{ env.REGISTRY_LOCATION }}
 
     # Step 4: Fetch ACR credentials dynamically
     - name: Fetch ACR credentials
@@ -56,7 +60,7 @@ jobs:
       id: image-version
       run: echo "::set-output name=version::$(date +'%Y%m%d%H%M%S')"
 
-    # Step 7: Build and push the Docker image
+    # Step 7: Build and push Docker image
     - name: Build and push image
       run: |
         docker build . -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
@@ -66,5 +70,5 @@ jobs:
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: dmoneyWebApp  # Replace with your Azure Web App name
+        app-name: ${{ env.WEB_APP_NAME }}
         images: ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
