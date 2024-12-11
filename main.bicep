@@ -73,12 +73,14 @@ module keyVault 'modules/key-vault.bicep' = {
   params: {
     name: 'dmoneyKeyVault'
     location: location
-    objectId: 'your-object-id'
-    registryName: 'dmoneyContainerRegistry'
-    ServicePrincipalId: '2c9d3d07-9aac-4d2e-9337-60284d4a993b'
+    enableVaultForDeployment: true
+    roleAssignments: [
+      {
+        principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
+        roleDefinitionIdOrName: 'Key Vault Secrets User'
+        principalType: 'ServicePrincipal'
+      }
+    ]
   }
 }
-
-
-
 
