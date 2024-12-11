@@ -3,7 +3,7 @@ param dmoneyContainerRegistryName string = 'dmoneycontainerregistry' // Containe
 param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Plan Name
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
-
+param keyVaultName string = 'dmoneyKeyVault' // Key Vault Name
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
@@ -63,9 +63,6 @@ module webApp 'modules/webApp.bicep' = {
     ]
   }
 }
-param keyVaultName string = 'dmoneyKeyVault' // Key Vault Name
-
-// Azure Key Vault Module
 resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: keyVaultName
   location: location
@@ -75,6 +72,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       family: 'A'
       name: 'standard'
     }
-    accessPolicies: [] // Add policies later if required
   }
 }
+
+// Output for verification or integration
+output keyVaultUri string = keyVault.properties.vaultUri
