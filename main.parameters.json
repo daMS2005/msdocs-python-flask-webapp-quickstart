@@ -17,11 +17,14 @@
       "appServicePlanName": {
         "value": "dmoneyAppServicePlan"
       },
-      "webAppName": {
+      "dmoneyWebAppName": {
         "value": "dmoneyWebApp"
       },
       "location": {
         "value": "westeurope"
+      },
+      "containerImageTag": {
+      "value": "latest"
       }
     }
   }

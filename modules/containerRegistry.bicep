@@ -12,8 +12,10 @@ param adminCredentialsKeyVaultSecretUserPassword1 string
 param adminCredentialsKeyVaultSecretUserPassword2 string
 
 
+
+
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' = {
-  name: registryName
+  name: containerRegistryName
 }
 
 

@@ -1,15 +1,50 @@
-// Parameters
-param dmoneyContainerRegistryName string = 'dmoneycontainerregistry' // Container Registry Name
-param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Plan Name
-param location string = 'westeurope' // Desired Azure Region
-param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
+param dmoneyContainerRegistryName string = 'dmoneycontainerregistry'
+param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan'
+param location string = 'westeurope'
+param dmoneyWebAppName string = 'dmoneyWebApp'
+param appSettingsKeyValuePairs array = [
+  {
+    name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+    value: 'false'
+  }
+  {
+    name: 'DOCKER_REGISTRY_SERVER_URL'
+    value: 'https://${dmoneyContainerRegistryName}.azurecr.io'
+  }
+  {
+    name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+    value: 'username_placeholder' // Replace dynamically if needed
+  }
+  {
+    name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+    value: 'password_placeholder' // Replace dynamically if needed
+  }
+]
 
-// Azure Container Registry Module
+module webApp 'modules/webApp.bicep' = {
+  name: 'deployWebApp'
+  params: {
+    name: dmoneyWebAppName
+    location: location
+    appSettingsKeyValuePairs: appSettingsKeyValuePairs
+    serverFarmResourceId: dmoneyAppServicePlan.outputs.id
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${dmoneyContainerRegistryName}/dmoneyimage:latest'
+      appCommandLine: ''
+    }
+  }
+}
+
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
-    adminCredentialsKeyVaultResourceId: keyVault.outputs.keyVaultUri
+    
     containerRegistryName: dmoneyContainerRegistryName
+    adminCredentialsKeyVaultResourceId: keyVault.outputs.keyVaultUri
+    adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
+    adminCredentialsKeyVaultSecretUserPassword1: 'ACR-Password1'
+    adminCredentialsKeyVaultSecretUserPassword2: 'ACR-Password2'
+    
   }
 }
 
@@ -32,38 +67,7 @@ module dmoneyAppServicePlan 'modules/appServicePlan.bicep' = {
   }
 }
 
-// Pass appSettings as an array
-module webApp 'modules/webApp.bicep' = {
-  name: 'deployWebApp'
-  params: {
-    name: dmoneyWebAppName
-    location: location
-    kind: 'app'
-    serverFarmResourceId: dmoneyAppServicePlan.outputs.id
-    siteConfig: {
-      linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
-      appCommandLine: ''
-    }
-    appSettingsArray: [
-      {
-        name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-        value: 'false'
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: containerRegistry.outputs.loginServer
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-        value: containerRegistry.outputs.username
-      }
-      {
-        name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-        value: containerRegistry.outputs.password
-      }
-    ]
-  }
-}
+
 module keyVault 'modules/key-vault.bicep' = {
   name: 'deployKeyVault'
   params: {
