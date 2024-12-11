@@ -3,7 +3,7 @@ name: Build and Deploy Container App to Azure
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on push to the main branch
 
 env:
   RESOURCE_GROUP: BCSAI2024-DEVOPS-STUDENTS-A-DEV
@@ -16,83 +16,74 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    # Step 1: Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # Step 2: Log in to Azure
     - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    # Step 3: Deploy infrastructure using Bicep
     - name: Deploy infrastructure using Bicep
       run: |
         az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file main.bicep \
-          --parameters \
-            dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
-            dmoneyAppServicePlanName=dmoneyAppServicePlan \
-            dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
-            location=${{ env.LOCATION }} \
-          --mode Complete
+          --parameters dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
+                       dmoneyAppServicePlanName=dmoneyAppServicePlan \
+                       dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
+                       location=${{ env.LOCATION }}
 
+    # Step 4: Fetch ACR credentials dynamically
     - name: Fetch ACR credentials
+      id: acr-credentials
       run: |
-        echo "REGISTRY_LOGIN_SERVER=$(az acr show --name ${{ env.REGISTRY_NAME }} --query "loginServer" -o tsv)" >> $GITHUB_ENV
-        echo "REGISTRY_USERNAME=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "username" -o tsv)" >> $GITHUB_ENV
-        echo "REGISTRY_PASSWORD=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "passwords[0].value" -o tsv)" >> $GITHUB_ENV
+        echo "Fetching ACR credentials..."
+        echo "::set-output name=login-server::$(az acr show --name ${{ env.REGISTRY_NAME }} --query "loginServer" -o tsv)"
+        echo "::set-output name=username::$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "username" -o tsv)"
+        echo "::set-output name=password::$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "passwords[0].value" -o tsv)"
 
-    - name: Fetch Key Vault secrets
-      run: |
-        echo "KEY_VAULT_NAME=$(az keyvault list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)" >> $GITHUB_ENV
-        echo "ACR_SECRET_USERNAME=$(az keyvault secret show --name acr-username --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
-        echo "ACR_SECRET_PASSWORD=$(az keyvault secret show --name acr-password --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
-
-    - name: Get Service Principal ID
-      run: |
-        SP_ID=$(az ad sp show --id ${{ secrets.CLIENT_ID }} --query "id" -o tsv)
-        echo "SERVICE_PRINCIPAL_ID=$SP_ID" >> $GITHUB_ENV
-
+    # Step 5: Log in to Azure Container Registry
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
       with:
-        login-server: ${{ env.REGISTRY_LOGIN_SERVER }}
-        username: ${{ env.REGISTRY_USERNAME }}
-        password: ${{ env.REGISTRY_PASSWORD }}
+        login-server: ${{ steps.acr-credentials.outputs.login-server }}
+        username: ${{ steps.acr-credentials.outputs.username }}
+        password: ${{ steps.acr-credentials.outputs.password }}
 
+    # Step 6: Set image version
     - name: Set image version
-      run: echo "IMAGE_VERSION=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
+      id: image-version
+      run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
 
-    - name: Ensure Docker is Installed
-      run: docker --version
-
+    # Step 7: Build and push Docker image
     - name: Build and push image
       run: |
-        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
-        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
+        docker build . -t ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+        docker build . -t ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest
+        docker push ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+        docker push ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest
 
     outputs:
-      image: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
+      image: ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: build  # This ensures the deploy job runs after build
 
     steps:
+    # Step 1: Log in to Azure
     - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy with Bicep
-      run: |
-        az deployment group create \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --template-file main.bicep \
-          --parameters ServicePrincipalId=${{ env.SERVICE_PRINCIPAL_ID }}
-
+    # Step 2: Deploy Docker image to Azure Web App
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.WEB_APP_NAME }}
-        images: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
+        images: ${{ needs.build.outputs.image }}

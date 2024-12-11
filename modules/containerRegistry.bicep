@@ -1,25 +1,17 @@
-
-// Existing Key Vault resource
-resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' existing = {
-  name: last(split(adminCredentialsKeyVaultResourceId, '/'))
-}
-
-// Define the container registry dynamically or pass as a parameter
-param containerRegistryName string
-param adminCredentialsKeyVaultResourceId string
-param adminCredentialsKeyVaultSecretUserName string
-param adminCredentialsKeyVaultSecretUserPassword1 string
-param adminCredentialsKeyVaultSecretUserPassword2 string
-
-
-
+param dmoneyContainerRegistryName string
+param location string
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' = {
-  name: containerRegistryName
+  name: dmoneyContainerRegistryName
+  location: location
+  sku: {
+    name: 'Basic'
+  }
+  properties: {
+    adminUserEnabled: true
+  }
 }
 
-
-// Outputs to expose login server and credentials dynamically
 output loginServer string = containerRegistry.properties.loginServer
-output username string = listCredentials(containerRegistry.id, '2022-01-01').username
-output password string = listCredentials(containerRegistry.id, '2022-01-01').passwords[0].value
+output username string = listCredentials(containerRegistry.id, '2021-12-01-preview').username
+output password string = listCredentials(containerRegistry.id, '2021-12-01-preview').passwords[0].value
