@@ -22,6 +22,10 @@
     },
     "location": {
       "value": "westeurope"
+    },
+    "keyVaultName": {
+    "value": "dmoneyKeyVault"
     }
+
   }
 }

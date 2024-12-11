@@ -63,3 +63,18 @@ module webApp 'modules/webApp.bicep' = {
     ]
   }
 }
+param keyVaultName string = 'dmoneyKeyVault' // Key Vault Name
+
+// Azure Key Vault Module
+resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    tenantId: subscription().tenantId
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    accessPolicies: [] // Add policies later if required
+  }
+}
