@@ -25,12 +25,12 @@ module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
     containerRegistryName: dmoneyContainerRegistryName
-    location: location
     adminCredentialsKeyVaultResourceId: keyVault.outputs.resourceId
     adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
     adminCredentialsKeyVaultSecretUserPassword: 'ACR-Password'
   }
 }
+
 
 // Azure App Service Plan Module
 module dmoneyAppServicePlan 'modules/appServicePlan.bicep' = {
@@ -58,9 +58,9 @@ module webApp 'modules/webApp.bicep' = {
     location: location
     kind: 'app'
     serverFarmResourceId: dmoneyAppServicePlan.outputs.id
-    dockerRegistryServerUrl: keyVault.outputs.vaultUri + '/secrets/ACR-Url'
-    dockerRegistryServerUserName: keyVault.outputs.vaultUri + '/secrets/ACR-Username'
-    dockerRegistryServerPassword: keyVault.outputs.vaultUri + '/secrets/ACR-Password'
+    dockerRegistryServerUrl: '${keyVault.outputs.vaultUri}/secrets/ACR-Url'
+    dockerRegistryServerUserName: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
+    dockerRegistryServerPassword: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''

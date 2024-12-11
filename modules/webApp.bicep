@@ -12,7 +12,7 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: serverFarmResourceId
     siteConfig: siteConfig
     appSettings: [
-      for key in keys(union(appSettingsKeyValuePairs, dockerAppSettings)): {
+      for key in union(appSettingsKeyValuePairs, dockerAppSettings).keys(): {
         name: key
         value: union(appSettingsKeyValuePairs, dockerAppSettings)[key]
       }
