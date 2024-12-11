@@ -35,7 +35,6 @@ jobs:
           --parameters dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
                        dmoneyAppServicePlanName=dmoneyAppServicePlan \
                        dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
-                       keyVaultName=dmoneyKeyVault
                        location=${{ env.LOCATION }}
 
     # Step 4: Fetch ACR credentials dynamically

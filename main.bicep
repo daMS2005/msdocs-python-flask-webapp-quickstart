@@ -75,5 +75,3 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   }
 }
 
-// Output for verification or integration
-output keyVaultUri string = keyVault.properties.vaultUri
