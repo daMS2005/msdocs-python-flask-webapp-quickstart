@@ -1,3 +1,12 @@
+@secure()
+param name string
+@secure()
+param location string
+param serverFarmResourceId string
+param siteConfig object
+param appSettingsKeyValuePairs object
+param dockerAppSettings object
+
 resource webApp 'Microsoft.Web/sites@2022-03-01' = {
   name: name
   location: location

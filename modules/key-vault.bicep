@@ -9,6 +9,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
   properties: {
     enableSoftDelete: true
     enabledForDeployment: enableVaultForDeployment
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
   }
 }
 
@@ -21,3 +25,6 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
     scope: keyVault.id
   }
 }]
+
+output resourceId string = keyVault.id
+output vaultUri string = keyVault.properties.vaultUri

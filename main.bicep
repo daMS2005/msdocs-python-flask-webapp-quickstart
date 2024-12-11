@@ -4,7 +4,7 @@ param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Pl
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
 
-module keyVault 'modules/key-vault.bicep' = {
+module keyVault 'key-vault.bicep' = {
   name: 'deployKeyVault'
   params: {
     name: 'dmoneyKeyVault'
@@ -19,6 +19,7 @@ module keyVault 'modules/key-vault.bicep' = {
     ]
   }
 }
+
 
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
@@ -58,9 +59,11 @@ module webApp 'modules/webApp.bicep' = {
     location: location
     kind: 'app'
     serverFarmResourceId: dmoneyAppServicePlan.outputs.id
-    dockerRegistryServerUrl: 'https://${dmoneyContainerRegistryName}.azurecr.io'
-    dockerRegistryServerUserName: keyVault.outputs.getSecret('ACR-Username')
-    dockerRegistryServerPassword: keyVault.outputs.getSecret('ACR-Password')
+    dockerRegistryServerUrl: keyVault.outputs.vaultUri + '/secrets/ACR-Url'
+    dockerRegistryServerUserName: keyVault.outputs.vaultUri + '/secrets/ACR-Username'
+    dockerRegistryServerPassword: keyVault.outputs.vaultUri + '/secrets/ACR-Password'
+
+    
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''
