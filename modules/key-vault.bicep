@@ -9,6 +9,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-10-01' = {
   properties: {
     enableSoftDelete: true
     enabledForDeployment: enableVaultForDeployment
+    tenantId: subscription().tenantId
     sku: {
       family: 'A'
       name: 'standard'
@@ -22,7 +23,6 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
     roleDefinitionId: role.roleDefinitionIdOrName
     principalId: role.principalId
     principalType: role.principalType
-    scope: keyVault.id
   }
 }]
 

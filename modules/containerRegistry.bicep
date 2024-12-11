@@ -22,12 +22,8 @@ resource secretUserName 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
   name: adminCredentialsKeyVaultSecretUserName
   parent: keyVault
   properties: {
-    value: listCredentials(containerRegistry.id, containerRegistry.apiVersion).username
+    value: listCredentials(containerRegistry.id, '2022-01-01').username
   }
-  dependsOn: [
-    keyVault
-    containerRegistry
-  ]
 }
 
 // Key Vault secret for container registry password
@@ -35,15 +31,11 @@ resource secretPassword 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
   name: adminCredentialsKeyVaultSecretUserPassword
   parent: keyVault
   properties: {
-    value: listCredentials(containerRegistry.id, containerRegistry.apiVersion).passwords[0].value
+    value: listCredentials(containerRegistry.id, '2022-01-01').passwords[0].value
   }
-  dependsOn: [
-    keyVault
-    containerRegistry
-  ]
 }
 
 // Outputs to expose login server and credentials dynamically
 output loginServer string = containerRegistry.properties.loginServer
-output usernameSecretName string = secretUserName.name
-output passwordSecretName string = secretPassword.name
+output username string = listCredentials(containerRegistry.id, '2022-01-01').username
+output password string = listCredentials(containerRegistry.id, '2022-01-01').passwords[0].value

@@ -20,12 +20,11 @@ module keyVault 'modules/key-vault.bicep' = {
   }
 }
 
-
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
-    dmoneyContainerRegistryName: dmoneyContainerRegistryName
+    containerRegistryName: dmoneyContainerRegistryName
     location: location
     adminCredentialsKeyVaultResourceId: keyVault.outputs.resourceId
     adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
@@ -62,8 +61,6 @@ module webApp 'modules/webApp.bicep' = {
     dockerRegistryServerUrl: keyVault.outputs.vaultUri + '/secrets/ACR-Url'
     dockerRegistryServerUserName: keyVault.outputs.vaultUri + '/secrets/ACR-Username'
     dockerRegistryServerPassword: keyVault.outputs.vaultUri + '/secrets/ACR-Password'
-
-    
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''

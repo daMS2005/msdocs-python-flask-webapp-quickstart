@@ -1,6 +1,4 @@
-@secure()
 param name string
-@secure()
 param location string
 param serverFarmResourceId string
 param siteConfig object
@@ -14,7 +12,7 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: serverFarmResourceId
     siteConfig: siteConfig
     appSettings: [
-      for key in union(appSettingsKeyValuePairs, dockerAppSettings): {
+      for key in keys(union(appSettingsKeyValuePairs, dockerAppSettings)): {
         name: key
         value: union(appSettingsKeyValuePairs, dockerAppSettings)[key]
       }
