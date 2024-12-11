@@ -4,12 +4,31 @@ param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Pl
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
 
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'deployKeyVault'
+  params: {
+    name: 'dmoneyKeyVault'
+    location: location
+    enableVaultForDeployment: true
+    roleAssignments: [
+      {
+        principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
+        roleDefinitionIdOrName: 'Key Vault Secrets User'
+        principalType: 'ServicePrincipal'
+      }
+    ]
+  }
+}
+
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
     dmoneyContainerRegistryName: dmoneyContainerRegistryName
     location: location
+    adminCredentialsKeyVaultResourceId: keyVault.outputs.resourceId
+    adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
+    adminCredentialsKeyVaultSecretUserPassword: 'ACR-Password'
   }
 }
 
@@ -39,6 +58,9 @@ module webApp 'modules/webApp.bicep' = {
     location: location
     kind: 'app'
     serverFarmResourceId: dmoneyAppServicePlan.outputs.id
+    dockerRegistryServerUrl: 'https://${dmoneyContainerRegistryName}.azurecr.io'
+    dockerRegistryServerUserName: keyVault.outputs.getSecret('ACR-Username')
+    dockerRegistryServerPassword: keyVault.outputs.getSecret('ACR-Password')
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''
@@ -50,15 +72,15 @@ module webApp 'modules/webApp.bicep' = {
       }
       {
         name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: containerRegistry.outputs.loginServer
+        value: 'https://${dmoneyContainerRegistryName}.azurecr.io'
       }
       {
         name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-        value: containerRegistry.outputs.username
+        value: keyVault.outputs.getSecret('ACR-Username')
       }
       {
         name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-        value: containerRegistry.outputs.password
+        value: keyVault.outputs.getSecret('ACR-Password')
       }
     ]
   }

@@ -32,43 +32,53 @@ jobs:
         az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file main.bicep \
-          --parameters dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
-                       dmoneyAppServicePlanName=dmoneyAppServicePlan \
-                       dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
-                       location=${{ env.LOCATION }}
+          --parameters \
+            dmoneyContainerRegistryName=${{ env.REGISTRY_NAME }} \
+            dmoneyAppServicePlanName=dmoneyAppServicePlan \
+            dmoneyWebAppName=${{ env.WEB_APP_NAME }} \
+            location=${{ env.LOCATION }} \
+          --mode Complete
 
-    # Step 4: Fetch ACR credentials dynamically
-    - name: Fetch ACR credentials
-      id: acr-credentials
+    # Step 4: Fetch ACR credentials dynamically from Azure
+    - name: Fetch ACR credentials from Azure
       run: |
-        echo "Fetching ACR credentials..."
-        echo "::set-output name=login-server::$(az acr show --name ${{ env.REGISTRY_NAME }} --query "loginServer" -o tsv)"
-        echo "::set-output name=username::$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "username" -o tsv)"
-        echo "::set-output name=password::$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "passwords[0].value" -o tsv)"
+        echo "REGISTRY_LOGIN_SERVER=$(az acr show --name ${{ env.REGISTRY_NAME }} --query "loginServer" -o tsv)" >> $GITHUB_ENV
+        echo "REGISTRY_USERNAME=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "username" -o tsv)" >> $GITHUB_ENV
+        echo "REGISTRY_PASSWORD=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "passwords[0].value" -o tsv)" >> $GITHUB_ENV
 
-    # Step 5: Log in to Azure Container Registry
+    # Step 5: Fetch Key Vault secrets dynamically
+    - name: Fetch Key Vault secrets
+      run: |
+        echo "KEY_VAULT_NAME=$(az keyvault list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)" >> $GITHUB_ENV
+        echo "ACR_SECRET_USERNAME=$(az keyvault secret show --name acr-username --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+        echo "ACR_SECRET_PASSWORD=$(az keyvault secret show --name acr-password --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+
+    # Step 6: Log in to Azure Container Registry
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
       with:
-        login-server: ${{ steps.acr-credentials.outputs.login-server }}
-        username: ${{ steps.acr-credentials.outputs.username }}
-        password: ${{ steps.acr-credentials.outputs.password }}
+        login-server: ${{ env.REGISTRY_LOGIN_SERVER }}
+        username: ${{ env.REGISTRY_USERNAME }}
+        password: ${{ env.REGISTRY_PASSWORD }}
 
-    # Step 6: Set image version
+    # Step 7: Set image version
     - name: Set image version
-      id: image-version
-      run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/heads/})-$(date +'%Y.%m.%d.%H.%M')"
+      run: echo "IMAGE_VERSION=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
 
-    # Step 7: Build and push Docker image
+    # Step 8: Ensure Docker is Installed
+    - name: Ensure Docker is Installed
+      run: docker --version
+
+    # Step 9: Build and push Docker image
     - name: Build and push image
       run: |
-        docker build . -t ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-        docker build . -t ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest
-        docker push ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
-        docker push ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ github.ref_name }}-latest
+        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
+        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
+        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
+        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
 
     outputs:
-      image: ${{ steps.acr-credentials.outputs.login-server }}/${{ env.IMAGE_BASE_NAME }}:${{ steps.image-version.outputs.version }}
+      image: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
 
   deploy:
     runs-on: ubuntu-latest
