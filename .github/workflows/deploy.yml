@@ -52,7 +52,12 @@ jobs:
         echo "KEY_VAULT_NAME=$(az keyvault list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)" >> $GITHUB_ENV
         echo "ACR_SECRET_USERNAME=$(az keyvault secret show --name acr-username --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
         echo "ACR_SECRET_PASSWORD=$(az keyvault secret show --name acr-password --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
+    - name: Get Service Principal ID
+      run: |
+      SP_ID=$(az ad sp show --id ${{ secrets.CLIENT_ID }} --query "id" -o tsv)
+      echo "SERVICE_PRINCIPAL_ID=$SP_ID" >> $GITHUB_ENV
 
+#Comment
     # Step 6: Log in to Azure Container Registry
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
@@ -91,10 +96,17 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 2: Deploy Docker image to Azure Web App
+    # Step 2: Deploy with Bicep
+    - name: Deploy with Bicep
+      run: |
+        az deployment group create \
+        --resource-group RESOURCE_GROUP \
+        --template-file main.bicep \
+        --parameters ServicePrincipalId=$SERVICE_PRINCIPAL_ID
+
+    # Step 3: Deploy Docker image to Azure Web App
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: ${{ env.WEB_APP_NAME }}
-        images: ${{ needs.build.outputs.image }}
-#Comment
+        app-name: ${{ env.dmoneyWebApp }}
+        images: ${{ env.dmoneyContainerRegistryName }}/${{ env.dmoneyImage }}:${{ env.IMAGE_VERSION }}

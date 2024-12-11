@@ -3,34 +3,22 @@ param dmoneyContainerRegistryName string = 'dmoneycontainerregistry' // Containe
 param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Plan Name
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
-
-module keyVault 'modules/key-vault.bicep' = {
-  name: 'deployKeyVault'
-  params: {
-    name: 'dmoneyKeyVault'
-    location: location
-    enableVaultForDeployment: true
-    roleAssignments: [
-      {
-        principalId: '7200f83e-ec45-4915-8c52-fb94147cfe5a'
-        roleDefinitionIdOrName: 'Key Vault Secrets User'
-        principalType: 'ServicePrincipal'
-      }
-    ]
-  }
-}
+param adminCredentialsKeyVaultResourceId string // Key Vault Resource ID
+param adminCredentialsKeyVaultSecretUserName string // Key Vault Secret for Username
+param adminCredentialsKeyVaultSecretUserPassword1 string // Key Vault Secret for Password 1
+param adminCredentialsKeyVaultSecretUserPassword2 string // Key Vault Secret for Password 2
 
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
     containerRegistryName: dmoneyContainerRegistryName
-    adminCredentialsKeyVaultResourceId: keyVault.outputs.resourceId
-    adminCredentialsKeyVaultSecretUserName: 'ACR-Username'
-    adminCredentialsKeyVaultSecretUserPassword: 'ACR-Password'
+    adminCredentialsKeyVaultResourceId: adminCredentialsKeyVaultResourceId
+    adminCredentialsKeyVaultSecretUserName: adminCredentialsKeyVaultSecretUserName
+    adminCredentialsKeyVaultSecretUserPassword1: adminCredentialsKeyVaultSecretUserPassword1
+    adminCredentialsKeyVaultSecretUserPassword2: adminCredentialsKeyVaultSecretUserPassword2
   }
 }
-
 
 // Azure App Service Plan Module
 module dmoneyAppServicePlan 'modules/appServicePlan.bicep' = {
@@ -56,18 +44,44 @@ module webApp 'modules/webApp.bicep' = {
   params: {
     name: dmoneyWebAppName
     location: location
+    kind: 'app'
     serverFarmResourceId: dmoneyAppServicePlan.outputs.id
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''
     }
-    appSettingsKeyValuePairs: {
-      WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
-      DOCKER_REGISTRY_SERVER_URL: 'https://${dmoneyContainerRegistryName}.azurecr.io'
-    }
-    dockerAppSettings: {
-      DOCKER_REGISTRY_SERVER_USERNAME: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
-      DOCKER_REGISTRY_SERVER_PASSWORD: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
-    }
+    appSettingsArray: [
+      {
+        name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+        value: 'false'
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_URL'
+        value: containerRegistry.outputs.loginServer
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+        value: containerRegistry.outputs.username
+      }
+      {
+        name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+        value: containerRegistry.outputs.password
+      }
+    ]
   }
 }
+
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'deployKeyVault'
+  params: {
+    name: 'dmoneyKeyVault'
+    location: location
+    objectId: 'your-object-id'
+    registryName: 'dmoneyContainerRegistry'
+    ServicePrincipalId: '2c9d3d07-9aac-4d2e-9337-60284d4a993b'
+  }
+}
+
+
+
+
