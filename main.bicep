@@ -71,16 +71,13 @@ module webApp 'modules/webApp.bicep' = {
         value: 'false'
       }
       {
-        name: 'DOCKER_REGISTRY_SERVER_URL'
-        value: 'https://${dmoneyContainerRegistryName}.azurecr.io'
+        dockerRegistryServerUrl: '${keyVault.outputs.vaultUri}/secrets/ACR-Url'
       }
       {
-        name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-        value: keyVault.outputs.getSecret('ACR-Username')
+        dockerRegistryServerUserName: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
       }
       {
-        name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-        value: keyVault.outputs.getSecret('ACR-Password')
+        dockerRegistryServerPassword: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
       }
     ]
   }
