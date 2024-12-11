@@ -56,29 +56,18 @@ module webApp 'modules/webApp.bicep' = {
   params: {
     name: dmoneyWebAppName
     location: location
-    kind: 'app'
     serverFarmResourceId: dmoneyAppServicePlan.outputs.id
-    dockerRegistryServerUrl: '${keyVault.outputs.vaultUri}/secrets/ACR-Url'
-    dockerRegistryServerUserName: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
-    dockerRegistryServerPassword: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerRegistry.outputs.loginServer}/dmoneyimage:latest'
       appCommandLine: ''
     }
-    appSettingsArray: [
-      {
-        name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-        value: 'false'
-      }
-      {
-        dockerRegistryServerUrl: '${keyVault.outputs.vaultUri}/secrets/ACR-Url'
-      }
-      {
-        dockerRegistryServerUserName: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
-      }
-      {
-        dockerRegistryServerPassword: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
-      }
-    ]
+    appSettingsKeyValuePairs: {
+      WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'false'
+      DOCKER_REGISTRY_SERVER_URL: 'https://${dmoneyContainerRegistryName}.azurecr.io'
+    }
+    dockerAppSettings: {
+      DOCKER_REGISTRY_SERVER_USERNAME: '${keyVault.outputs.vaultUri}/secrets/ACR-Username'
+      DOCKER_REGISTRY_SERVER_PASSWORD: '${keyVault.outputs.vaultUri}/secrets/ACR-Password'
+    }
   }
 }
