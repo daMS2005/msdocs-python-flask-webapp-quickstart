@@ -3,7 +3,7 @@ name: Build and Deploy Container App to Azure
 on:
   push:
     branches:
-      - main  # Trigger on push to the main branch
+      - main
 
 env:
   RESOURCE_GROUP: BCSAI2024-DEVOPS-STUDENTS-A-DEV
@@ -16,17 +16,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # Step 1: Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Step 2: Log in to Azure
     - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 3: Deploy infrastructure using Bicep
     - name: Deploy infrastructure using Bicep
       run: |
         az deployment group create \
@@ -39,27 +36,23 @@ jobs:
             location=${{ env.LOCATION }} \
           --mode Complete
 
-    # Step 4: Fetch ACR credentials dynamically from Azure
-    - name: Fetch ACR credentials from Azure
+    - name: Fetch ACR credentials
       run: |
         echo "REGISTRY_LOGIN_SERVER=$(az acr show --name ${{ env.REGISTRY_NAME }} --query "loginServer" -o tsv)" >> $GITHUB_ENV
         echo "REGISTRY_USERNAME=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "username" -o tsv)" >> $GITHUB_ENV
         echo "REGISTRY_PASSWORD=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query "passwords[0].value" -o tsv)" >> $GITHUB_ENV
 
-    # Step 5: Fetch Key Vault secrets dynamically
     - name: Fetch Key Vault secrets
       run: |
         echo "KEY_VAULT_NAME=$(az keyvault list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)" >> $GITHUB_ENV
         echo "ACR_SECRET_USERNAME=$(az keyvault secret show --name acr-username --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
         echo "ACR_SECRET_PASSWORD=$(az keyvault secret show --name acr-password --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
 
-    # Step 6: Get Service Principal ID
     - name: Get Service Principal ID
       run: |
         SP_ID=$(az ad sp show --id ${{ secrets.CLIENT_ID }} --query "id" -o tsv)
         echo "SERVICE_PRINCIPAL_ID=$SP_ID" >> $GITHUB_ENV
 
-    # Step 7: Log in to Azure Container Registry
     - name: Log in to Azure Container Registry
       uses: azure/docker-login@v1
       with:
@@ -67,37 +60,30 @@ jobs:
         username: ${{ env.REGISTRY_USERNAME }}
         password: ${{ env.REGISTRY_PASSWORD }}
 
-    # Step 8: Set image version
     - name: Set image version
       run: echo "IMAGE_VERSION=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
 
-    # Step 9: Ensure Docker is Installed
     - name: Ensure Docker is Installed
       run: docker --version
 
-    # Step 10: Build and push Docker image
     - name: Build and push image
       run: |
         docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
-        docker build . -t ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
         docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
-        docker push ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:latest
 
     outputs:
       image: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_BASE_NAME }}:${{ env.IMAGE_VERSION }}
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build  # This ensures the deploy job runs after build
+    needs: build
 
     steps:
-    # Step 1: Log in to Azure
     - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 2: Deploy with Bicep
     - name: Deploy with Bicep
       run: |
         az deployment group create \
@@ -105,13 +91,6 @@ jobs:
           --template-file main.bicep \
           --parameters ServicePrincipalId=${{ env.SERVICE_PRINCIPAL_ID }}
 
-    # Step 3: Fetch Key Vault secrets
-      run: |
-        echo "KEY_VAULT_NAME=$(az keyvault list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)" >> $GITHUB_ENV
-        echo "ACR_SECRET_USERNAME=$(az keyvault secret show --name acr-username --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
-        echo "ACR_SECRET_PASSWORD=$(az keyvault secret show --name acr-password --vault-name ${{ env.KEY_VAULT_NAME }} --query value -o tsv)" >> $GITHUB_ENV
-
-    # Step 4: Deploy Docker image to Azure Web App
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
