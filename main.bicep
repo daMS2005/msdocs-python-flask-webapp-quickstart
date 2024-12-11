@@ -3,22 +3,16 @@ param dmoneyContainerRegistryName string = 'dmoneycontainerregistry' // Containe
 param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Plan Name
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
-param adminCredentialsKeyVaultResourceId string // Key Vault Resource ID
-param adminCredentialsKeyVaultSecretUserName string // Key Vault Secret for Username
-param adminCredentialsKeyVaultSecretUserPassword1 string // Key Vault Secret for Password 1
-param adminCredentialsKeyVaultSecretUserPassword2 string // Key Vault Secret for Password 2
 
 // Azure Container Registry Module
 module containerRegistry 'modules/containerRegistry.bicep' = {
   name: 'deployContainerRegistry'
   params: {
+    adminCredentialsKeyVaultResourceId: keyVault.outputs.keyVaultUri
     containerRegistryName: dmoneyContainerRegistryName
-    adminCredentialsKeyVaultResourceId: adminCredentialsKeyVaultResourceId
-    adminCredentialsKeyVaultSecretUserName: adminCredentialsKeyVaultSecretUserName
-    adminCredentialsKeyVaultSecretUserPassword1: adminCredentialsKeyVaultSecretUserPassword1
-    adminCredentialsKeyVaultSecretUserPassword2: adminCredentialsKeyVaultSecretUserPassword2
   }
 }
+
 
 // Azure App Service Plan Module
 module dmoneyAppServicePlan 'modules/appServicePlan.bicep' = {
@@ -70,7 +64,6 @@ module webApp 'modules/webApp.bicep' = {
     ]
   }
 }
-
 module keyVault 'modules/key-vault.bicep' = {
   name: 'deployKeyVault'
   params: {

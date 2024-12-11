@@ -3,7 +3,7 @@ param location string
 param serverFarmResourceId string
 param siteConfig object
 param appSettingsKeyValuePairs object
-param dockerAppSettings object
+param dockerAppSettings object = {}
 param containerImageName string
 param containerImageTag string
 
@@ -21,10 +21,13 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
         name: key.name
         value: key.value
       }
-      for key in dockerAppSettings: {
-        name: key.name
-        value: key.value
+    ]
+      appSettings: [
+  for keyValue in array(dockerAppSettings): {
+    name: keyValue.key
+    value: keyValue.value
       }
     ]
+    
   }
 }
