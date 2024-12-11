@@ -4,7 +4,7 @@ param dmoneyAppServicePlanName string = 'dmoneyAppServicePlan' // App Service Pl
 param location string = 'westeurope' // Desired Azure Region
 param dmoneyWebAppName string = 'dmoneyWebApp' // Web App Name
 
-module keyVault 'key-vault.bicep' = {
+module keyVault 'modules/key-vault.bicep' = {
   name: 'deployKeyVault'
   params: {
     name: 'dmoneyKeyVault'
