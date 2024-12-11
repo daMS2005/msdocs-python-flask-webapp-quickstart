@@ -72,6 +72,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       family: 'A'
       name: 'standard'
     }
+    accessPolicies: [] // Explicitly set to an empty array
   }
 }
 
+// Output for verification or integration
+output keyVaultUri string = keyVault.properties.vaultUri
